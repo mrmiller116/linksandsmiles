@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Paper Factory: Quality Control</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; text-align: center; background: #eceff1; margin: 0; padding: 10px; touch-action: manipulation; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #canvas-container { position: relative; margin: 15px auto; border: 3px solid #444; background: #999; width: 600px; height: 450px; cursor: crosshair; touch-action: none; overflow: hidden; border-radius: 4px;}
+        #paper-sheet { position: absolute; top: 15px; left: 15px; width: 570px; height: 420px; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .toolbar { display: flex; justify-content: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .timer { font-size: 2rem; color: #d32f2f; font-weight: bold; min-width: 70px; }
+        .stat-box { background: #f1f3f4; border: 1px solid #bdc3c7; padding: 8px 12px; border-radius: 8px; font-weight: bold; font-size: 1rem; }
+        button { padding: 12px 14px; font-size: 0.85rem; border-radius: 8px; border: 2px solid transparent; cursor: pointer; background: #7f8c8d; color: white; transition: 0.15s; }
+        button.active-mode { border-color: #2c3e50; transform: scale(1.05); box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-weight: bold; }
+        .btn-smile { background: #f1c40f; color: black; }
+        .btn-link { background: #3498db; }
+        .btn-marker { background: #27ae60; }
+        .error-msg { color: #d32f2f; font-weight: bold; height: 20px; margin-bottom: 5px; font-size: 0.9rem;}
+        .results-table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+        .results-table th, .results-table td { border: 1px solid #ddd; padding: 10px; }
+        .hidden { display: none; }
+        .objective-banner { background: #fff9c4; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; border: 1px solid #fbc02d; font-size: 1rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="margin:0 0 10px 0;">Paper Factory: QC Lab</h2>
+    
+    <div id="setup-screen">
+        <p><b>Quality Control Rules:</b><br>1. Cut the shape.<br>2. Use the <b>Marker</b> to draw inside. It won't count until you draw!</p>
+        <button onclick="startRound()" style="background:#2ecc71; font-size: 1.1rem; padding: 15px 40px;">Start Factory</button>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <div class="objective-banner" id="objective-text"></div>
+        <div id="feedback" class="error-msg"></div>
+        
+        <div class="toolbar">
+            <div class="stat-box">Round <span id="round-num">1</span></div>
+            <div class="timer" id="timer">75</div>
+            <div class="stat-box">🙂 Finished: <span id="smiles-count">0</span></div>
+            <div class="stat-box">🔗 Finished: <span id="links-count">0</span></div>
+        </div>
+
+        <div class="toolbar">
+            <button id="mode-smile" class="btn-smile" onclick="setMode('smile')">Cut Circle</button>
+            <button id="mode-link" class="btn-link" onclick="setMode('link')">Cut Rect</button>
+            <button id="mode-marker" class="btn-marker" onclick="setMode('marker')">MARKER: OFF</button>
+            <button style="background:#e74c3c" onclick="resetRound()">Reset Round</button>
+        </div>
+
+        <div id="canvas-container">
+            <div id="paper-sheet">
+                <canvas id="paperCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="results-screen" class="hidden">
+        <h3>Round Data</h3>
+        <table class="results-table">
+            <thead><tr><th>Round</th><th>Smiles</th><th>Links</th></tr></thead>
+            <tbody id="log-body"></tbody>
+        </table>
+        <button id="next-btn" onclick="nextRound()" style="margin-top:20px; background: #3498db; padding: 12px 25px;">Next Round</button>
+        <button id="restart-btn" class="hidden" onclick="location.reload()" style="margin-top:20px; background: #e67e22; padding: 12px 25px; color:white; border-radius:8px; border:none;">Restart Lab</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('paperCanvas');
+    const ctx = canvas.getContext('2d');
+    let currentRound = 1;
+    let timeLeft = 75;
+    let timerId;
+    let mode = 'smile'; 
+    let counts = { smiles: 0, links: 0 };
+    let placedShapes = []; 
+    
+    const objectives = [
+        "Round 1: 4 Smiles + Max Links",
+        "Round 2: Produce ONLY Links",
+        "Round 3: Produce ONLY Smiles",
+        "Round 4: 1 Smile + Max Links"
+    ];
+
+    canvas.width = 570; 
+    canvas.height = 420;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+
+    let isDrawing = false;
+
+    function setMode(newMode) {
+        mode = newMode;
+        document.getElementById('mode-smile').className = (mode === 'smile' ? 'btn-smile active-mode' : 'btn-smile');
+        document.getElementById('mode-link').className = (mode === 'link' ? 'btn-link active-mode' : 'btn-link');
+        const mBtn = document.getElementById('mode-marker');
+        mBtn.className = (mode === 'marker' ? 'btn-marker active-mode' : 'btn-marker');
+        mBtn.innerText = (mode === 'marker' ? "MARKER: ON" : "MARKER: OFF");
+    }
+
+    function startRound() {
+        document.getElementById('setup-screen').classList.add('hidden');
+        document.getElementById('results-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        document.getElementById('objective-text').innerText = objectives[currentRound-1];
+        document.getElementById('round-num').innerText = currentRound;
+        resetRound();
+        timerId = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer').innerText = timeLeft;
+            if (timeLeft <= 0) endRound();
+        }, 1000);
+    }
+
+    function resetRound() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        counts = { smiles: 0, links: 0 };
+        placedShapes = [];
+        updateStats();
+        setMode('smile');
+        timeLeft = 75;
+    }
+
+    function checkCollision(newShape) {
+        if (newShape.type === 'circle') {
+            if (newShape.x - 45 < 0 || newShape.x + 45 > canvas.width || newShape.y - 45 < 0 || newShape.y + 45 > canvas.height) return "OUT_OF_BOUNDS";
+        } else {
+            if (newShape.x < 0 || newShape.x + 110 > canvas.width || newShape.y < 0 || newShape.y + 50 > canvas.height) return "OUT_OF_BOUNDS";
+        }
+        for (let s of placedShapes) {
+            let b1 = newShape.type === 'circle' ? {x: newShape.x-45, y:newShape.y-45, w:90, h:90} : {x:newShape.x, y:newShape.y, w:110, h:50};
+            let b2 = s.type === 'circle' ? {x: s.x-45, y:s.y-45, w:90, h:90} : {x:s.x, y:s.y, w:110, h:50};
+            if (b1.x < b2.x + b2.w && b1.x + b1.w > b2.x && b1.y < b2.y + b2.h && b1.y + b1.h > b2.y) return "OVERLAP";
+        }
+        return "CLEAR";
+    }
+
+    function handleInput(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+        const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+        const feedback = document.getElementById('feedback');
+
+        if (mode === 'marker') {
+            if (e.type === 'mousedown' || e.type === 'touchstart') {
+                isDrawing = true; ctx.beginPath(); ctx.moveTo(x, y);
+            } else if (isDrawing) {
+                ctx.lineTo(x, y); ctx.strokeStyle = "#000"; ctx.stroke();
+                
+                // Check if drawing point is inside any unfinished shape
+                placedShapes.forEach(shape => {
+                    if (!shape.finished) {
+                        let inside = false;
+                        if (shape.type === 'circle') {
+                            let dist = Math.hypot(x - shape.x, y - shape.y);
+                            if (dist < 45) inside = true;
+                        } else {
+                            if (x > shape.x && x < shape.x + 110 && y > shape.y && y < shape.y + 50) inside = true;
+                        }
+                        
+                        if (inside) {
+                            shape.finished = true;
+                            if (shape.type === 'circle') counts.smiles++;
+                            else counts.links++;
+                            updateStats();
+                        }
+                    }
+                });
+            }
+        } else if (e.type === 'mousedown' || e.type === 'touchstart') {
+            let newShape = mode === 'smile' ? {type:'circle', x, y, finished: false} : {type:'rect', x: x-55, y: y-25, finished: false};
+            let status = checkCollision(newShape);
+            
+            if (status === "CLEAR") {
+                feedback.innerText = "";
+                placedShapes.push(newShape);
+                if (mode === 'smile') {
+                    ctx.strokeStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(x, y, 45, 0, Math.PI*2); ctx.stroke();
+                } else {
+                    ctx.strokeStyle = '#3498db'; ctx.strokeRect(x-55, y-25, 110, 50);
+                }
+            } else {
+                feedback.innerText = status === "OVERLAP" ? "⚠️ No Overlapping!" : "⚠️ Stay on the paper!";
+                setTimeout(() => feedback.innerText = "", 1500);
+            }
+        }
+    }
+
+    canvas.addEventListener('mousedown', handleInput);
+    canvas.addEventListener('mousemove', handleInput);
+    window.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInput(e); });
+    canvas.addEventListener('touchend', () => isDrawing = false);
+
+    function updateStats() {
+        document.getElementById('smiles-count').innerText = counts.smiles;
+        document.getElementById('links-count').innerText = counts.links;
+    }
+
+    function endRound() {
+        clearInterval(timerId);
+        const row = document.getElementById('log-body').insertRow(-1);
+        row.insertCell(0).innerText = "Round " + currentRound;
+        row.insertCell(1).innerText = counts.smiles;
+        row.insertCell(2).innerText = counts.links;
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('results-screen').classList.remove('hidden');
+        if (currentRound >= 4) {
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('restart-btn').classList.remove('hidden');
+        }
+    }
+
+    function nextRound() { currentRound++; startRound(); }
+</script>
+</body>
+</html>
