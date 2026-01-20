@@ -3,36 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Paper Factory: Quality Control</title>
+    <title>Paper Factory: 5-Round PPF Lab</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; text-align: center; background: #eceff1; margin: 0; padding: 10px; touch-action: manipulation; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        #canvas-container { position: relative; margin: 15px auto; border: 3px solid #444; background: #999; width: 600px; height: 450px; cursor: crosshair; touch-action: none; overflow: hidden; border-radius: 4px;}
-        #paper-sheet { position: absolute; top: 15px; left: 15px; width: 570px; height: 420px; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+        .container { max-width: 1400px; margin: auto; background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        /* Game Screen Layout */
+        .canvas-wrapper { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 15px; padding: 10px; }
+        .canvas-container { position: relative; border: 4px solid #333; background: #7f8c8d; width: 600px; height: 400px; cursor: crosshair; touch-action: none; overflow: hidden; border-radius: 8px; }
+        .paper-sheet { position: absolute; top: 15px; left: 15px; width: 570px; height: 370px; background: white; }
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .toolbar { display: flex; justify-content: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-        .timer { font-size: 2rem; color: #d32f2f; font-weight: bold; min-width: 70px; }
-        .stat-box { background: #f1f3f4; border: 1px solid #bdc3c7; padding: 8px 12px; border-radius: 8px; font-weight: bold; font-size: 1rem; }
-        button { padding: 12px 14px; font-size: 0.85rem; border-radius: 8px; border: 2px solid transparent; cursor: pointer; background: #7f8c8d; color: white; transition: 0.15s; }
-        button.active-mode { border-color: #2c3e50; transform: scale(1.05); box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-weight: bold; }
+
+        /* UI Elements */
+        .toolbar { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+        .timer { font-size: 2.5rem; color: #d32f2f; font-weight: bold; min-width: 90px; }
+        .stat-box { background: #2c3e50; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; }
+        
+        button { padding: 14px 18px; font-size: 1rem; border-radius: 8px; border: 2px solid transparent; cursor: pointer; background: #607d8b; color: white; transition: 0.2s; font-weight: 500; }
+        button.active-mode { border-color: #000; transform: scale(1.05); background: #455a64; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .btn-smile { background: #f1c40f; color: black; }
         .btn-link { background: #3498db; }
         .btn-marker { background: #27ae60; }
-        .error-msg { color: #d32f2f; font-weight: bold; height: 20px; margin-bottom: 5px; font-size: 0.9rem;}
-        .results-table { width: 100%; margin-top: 15px; border-collapse: collapse; }
-        .results-table th, .results-table td { border: 1px solid #ddd; padding: 10px; }
+        .btn-expand { background: #9b59b6; border: 2px solid #8e44ad; }
+        
+        .error-msg { color: #d32f2f; font-weight: bold; height: 25px; font-size: 1rem; margin-top: 5px;}
+
+        /* Results Screen Layout */
+        .results-flex { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px; margin-top: 20px; }
+        .results-left { flex: 1; min-width: 350px; max-width: 450px; }
+        
+        /* Fixed Graph Container Size */
+        .results-right { 
+            flex: 2; 
+            min-width: 500px; 
+            min-height: 500px; 
+            background: #ffffff; 
+            padding: 20px; 
+            border-radius: 12px; 
+            border: 2px solid #eee; 
+            position: relative;
+        }
+        
+        .results-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .results-table th, .results-table td { border: 1px solid #ddd; padding: 12px; font-size: 1rem; }
         .hidden { display: none; }
-        .objective-banner { background: #fff9c4; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; border: 1px solid #fbc02d; font-size: 1rem; }
+        .objective-banner { background: #fff9c4; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; border: 1px solid #fbc02d; font-size: 1.2rem; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="margin:0 0 10px 0;">Paper Factory: QC Lab</h2>
+    <h1 style="margin:0 0 10px 0;">Paper Factory: Big Data PPF</h1>
     
     <div id="setup-screen">
-        <p><b>Quality Control Rules:</b><br>1. Cut the shape.<br>2. Use the <b>Marker</b> to draw inside. It won't count until you draw!</p>
-        <button onclick="startRound()" style="background:#2ecc71; font-size: 1.1rem; padding: 15px 40px;">Start Factory</button>
+        <p><b>Production Objective:</b> Complete 5 rounds to generate a full curve.</p>
+        <button onclick="startRound()" style="background:#2ecc71; font-size: 1.4rem; padding: 20px 60px;">Start Round 1</button>
     </div>
 
     <div id="game-screen" class="hidden">
@@ -50,50 +76,50 @@
             <button id="mode-smile" class="btn-smile" onclick="setMode('smile')">Cut Circle</button>
             <button id="mode-link" class="btn-link" onclick="setMode('link')">Cut Rect</button>
             <button id="mode-marker" class="btn-marker" onclick="setMode('marker')">MARKER: OFF</button>
-            <button style="background:#e74c3c" onclick="resetRound()">Reset Round</button>
+            <button id="btn-add-sheet" class="btn-expand" onclick="addSheet()">+ Extra Sheet</button>
         </div>
 
-        <div id="canvas-container">
-            <div id="paper-sheet">
-                <canvas id="paperCanvas"></canvas>
-            </div>
-        </div>
+        <div class="canvas-wrapper" id="canvas-wrapper"></div>
     </div>
 
     <div id="results-screen" class="hidden">
-        <h3>Round Data</h3>
-        <table class="results-table">
-            <thead><tr><th>Round</th><th>Smiles</th><th>Links</th></tr></thead>
-            <tbody id="log-body"></tbody>
-        </table>
-        <button id="next-btn" onclick="nextRound()" style="margin-top:20px; background: #3498db; padding: 12px 25px;">Next Round</button>
-        <button id="restart-btn" class="hidden" onclick="location.reload()" style="margin-top:20px; background: #e67e22; padding: 12px 25px; color:white; border-radius:8px; border:none;">Restart Lab</button>
+        <div class="results-flex">
+            <div class="results-left">
+                <h3>Production Table</h3>
+                <table class="results-table">
+                    <thead><tr><th>Round</th><th>Smiles (X)</th><th>Links (Y)</th></tr></thead>
+                    <tbody id="log-body"></tbody>
+                </table>
+                <p style="text-align:left; font-size: 0.9rem; color: #555;">Note: The graph scales automatically as your production grows.</p>
+                <button id="next-btn" onclick="nextRound()" style="width:100%; margin-top:20px; background: #3498db; padding: 15px;">Next Round</button>
+                <button id="restart-btn" class="hidden" onclick="location.reload()" style="width:100%; margin-top:20px; background: #e67e22; padding: 15px;">Restart All</button>
+            </div>
+
+            <div class="results-right">
+                <canvas id="ppfChart"></canvas>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    const canvas = document.getElementById('paperCanvas');
-    const ctx = canvas.getContext('2d');
     let currentRound = 1;
     let timeLeft = 75;
     let timerId;
     let mode = 'smile'; 
     let counts = { smiles: 0, links: 0 };
     let placedShapes = []; 
-    
+    let activeCanvases = [];
+    let ppfData = []; 
+    let chartObj = null;
+
     const objectives = [
         "Round 1: 4 Smiles + Max Links",
         "Round 2: Produce ONLY Links",
         "Round 3: Produce ONLY Smiles",
-        "Round 4: 1 Smile + Max Links"
+        "Round 4: 1 Smile + Max Links",
+        "Round 5: 4 Links + Max Smiles"
     ];
-
-    canvas.width = 570; 
-    canvas.height = 420;
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-
-    let isDrawing = false;
 
     function setMode(newMode) {
         mode = newMode;
@@ -110,7 +136,17 @@
         document.getElementById('game-screen').classList.remove('hidden');
         document.getElementById('objective-text').innerText = objectives[currentRound-1];
         document.getElementById('round-num').innerText = currentRound;
-        resetRound();
+        
+        counts = { smiles: 0, links: 0 };
+        placedShapes = [];
+        timeLeft = 75;
+        document.getElementById('canvas-wrapper').innerHTML = '';
+        activeCanvases = [];
+        addSheet(); 
+        updateStats();
+        setMode('smile');
+        document.getElementById('btn-add-sheet').style.display = 'inline-block';
+
         timerId = setInterval(() => {
             timeLeft--;
             document.getElementById('timer').innerText = timeLeft;
@@ -118,86 +154,81 @@
         }, 1000);
     }
 
-    function resetRound() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        counts = { smiles: 0, links: 0 };
-        placedShapes = [];
-        updateStats();
-        setMode('smile');
-        timeLeft = 75;
+    function addSheet() {
+        if (activeCanvases.length >= 4) return;
+        const wrapper = document.getElementById('canvas-wrapper');
+        const id = "canvas-" + activeCanvases.length;
+        const container = document.createElement('div');
+        container.className = 'canvas-container';
+        container.innerHTML = `<div class="paper-sheet"><canvas id="${id}"></canvas></div>`;
+        wrapper.appendChild(container);
+        const canvas = document.getElementById(id);
+        canvas.width = 570;
+        canvas.height = 370;
+        const ctx = canvas.getContext('2d');
+        ctx.lineWidth = 4; ctx.lineCap = 'round';
+        activeCanvases.push({ canvas, ctx });
+        setupCanvasListeners(canvas, ctx);
+        if (activeCanvases.length === 4) document.getElementById('btn-add-sheet').style.display = 'none';
     }
 
-    function checkCollision(newShape) {
-        if (newShape.type === 'circle') {
-            if (newShape.x - 45 < 0 || newShape.x + 45 > canvas.width || newShape.y - 45 < 0 || newShape.y + 45 > canvas.height) return "OUT_OF_BOUNDS";
-        } else {
-            if (newShape.x < 0 || newShape.x + 110 > canvas.width || newShape.y < 0 || newShape.y + 50 > canvas.height) return "OUT_OF_BOUNDS";
-        }
+    function setupCanvasListeners(canvas, ctx) {
+        let isDrawing = false;
+        const handleInput = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+            const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+            if (mode === 'marker') {
+                if (e.type === 'mousedown' || e.type === 'touchstart') {
+                    isDrawing = true; ctx.beginPath(); ctx.moveTo(x, y);
+                } else if (isDrawing) {
+                    ctx.lineTo(x, y); ctx.strokeStyle = "#000"; ctx.stroke();
+                    placedShapes.forEach(shape => {
+                        if (shape.canvasId === canvas.id && !shape.finished) {
+                            let inside = false;
+                            if (shape.type === 'circle') { if (Math.hypot(x - shape.x, y - shape.y) < 45) inside = true; }
+                            else { if (x > shape.x && x < shape.x + 110 && y > shape.y && y < shape.y + 50) inside = true; }
+                            if (inside) {
+                                shape.finished = true;
+                                if (shape.type === 'circle') counts.smiles++; else counts.links++;
+                                updateStats();
+                            }
+                        }
+                    });
+                }
+            } else if (e.type === 'mousedown' || e.type === 'touchstart') {
+                let newShape = mode === 'smile' ? {type:'circle', x, y, finished: false, canvasId: canvas.id} : {type:'rect', x: x-55, y: y-25, finished: false, canvasId: canvas.id};
+                let status = checkCollision(newShape, canvas);
+                if (status === "CLEAR") {
+                    placedShapes.push(newShape);
+                    if (mode === 'smile') { ctx.strokeStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(x, y, 45, 0, Math.PI*2); ctx.stroke(); }
+                    else { ctx.strokeStyle = '#3498db'; ctx.strokeRect(x-55, y-25, 110, 50); }
+                } else {
+                    const fb = document.getElementById('feedback');
+                    fb.innerText = status === "OVERLAP" ? "⚠️ Overlap!" : "⚠️ Off Page!";
+                    setTimeout(() => fb.innerText = "", 1200);
+                }
+            }
+        };
+        canvas.addEventListener('mousedown', handleInput);
+        canvas.addEventListener('mousemove', handleInput);
+        window.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInput(e); });
+        canvas.addEventListener('touchend', () => isDrawing = false);
+    }
+
+    function checkCollision(newShape, canvas) {
+        if (newShape.type === 'circle') { if (newShape.x - 45 < 0 || newShape.x + 45 > canvas.width || newShape.y - 45 < 0 || newShape.y + 45 > canvas.height) return "OUT"; }
+        else { if (newShape.x < 0 || newShape.x + 110 > canvas.width || newShape.y < 0 || newShape.y + 50 > canvas.height) return "OUT"; }
         for (let s of placedShapes) {
+            if (s.canvasId !== canvas.id) continue;
             let b1 = newShape.type === 'circle' ? {x: newShape.x-45, y:newShape.y-45, w:90, h:90} : {x:newShape.x, y:newShape.y, w:110, h:50};
             let b2 = s.type === 'circle' ? {x: s.x-45, y:s.y-45, w:90, h:90} : {x:s.x, y:s.y, w:110, h:50};
             if (b1.x < b2.x + b2.w && b1.x + b1.w > b2.x && b1.y < b2.y + b2.h && b1.y + b1.h > b2.y) return "OVERLAP";
         }
         return "CLEAR";
     }
-
-    function handleInput(e) {
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-        const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
-        const feedback = document.getElementById('feedback');
-
-        if (mode === 'marker') {
-            if (e.type === 'mousedown' || e.type === 'touchstart') {
-                isDrawing = true; ctx.beginPath(); ctx.moveTo(x, y);
-            } else if (isDrawing) {
-                ctx.lineTo(x, y); ctx.strokeStyle = "#000"; ctx.stroke();
-                
-                // Check if drawing point is inside any unfinished shape
-                placedShapes.forEach(shape => {
-                    if (!shape.finished) {
-                        let inside = false;
-                        if (shape.type === 'circle') {
-                            let dist = Math.hypot(x - shape.x, y - shape.y);
-                            if (dist < 45) inside = true;
-                        } else {
-                            if (x > shape.x && x < shape.x + 110 && y > shape.y && y < shape.y + 50) inside = true;
-                        }
-                        
-                        if (inside) {
-                            shape.finished = true;
-                            if (shape.type === 'circle') counts.smiles++;
-                            else counts.links++;
-                            updateStats();
-                        }
-                    }
-                });
-            }
-        } else if (e.type === 'mousedown' || e.type === 'touchstart') {
-            let newShape = mode === 'smile' ? {type:'circle', x, y, finished: false} : {type:'rect', x: x-55, y: y-25, finished: false};
-            let status = checkCollision(newShape);
-            
-            if (status === "CLEAR") {
-                feedback.innerText = "";
-                placedShapes.push(newShape);
-                if (mode === 'smile') {
-                    ctx.strokeStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(x, y, 45, 0, Math.PI*2); ctx.stroke();
-                } else {
-                    ctx.strokeStyle = '#3498db'; ctx.strokeRect(x-55, y-25, 110, 50);
-                }
-            } else {
-                feedback.innerText = status === "OVERLAP" ? "⚠️ No Overlapping!" : "⚠️ Stay on the paper!";
-                setTimeout(() => feedback.innerText = "", 1500);
-            }
-        }
-    }
-
-    canvas.addEventListener('mousedown', handleInput);
-    canvas.addEventListener('mousemove', handleInput);
-    window.addEventListener('mouseup', () => isDrawing = false);
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInput(e); });
-    canvas.addEventListener('touchend', () => isDrawing = false);
 
     function updateStats() {
         document.getElementById('smiles-count').innerText = counts.smiles;
@@ -206,19 +237,81 @@
 
     function endRound() {
         clearInterval(timerId);
+        ppfData.push({ x: counts.smiles, y: counts.links });
+        
         const row = document.getElementById('log-body').insertRow(-1);
         row.insertCell(0).innerText = "Round " + currentRound;
         row.insertCell(1).innerText = counts.smiles;
         row.insertCell(2).innerText = counts.links;
+
         document.getElementById('game-screen').classList.add('hidden');
         document.getElementById('results-screen').classList.remove('hidden');
-        if (currentRound >= 4) {
+        
+        setTimeout(initOrUpdateChart, 200);
+
+        if (currentRound >= 5) {
             document.getElementById('next-btn').classList.add('hidden');
             document.getElementById('restart-btn').classList.remove('hidden');
         }
     }
 
     function nextRound() { currentRound++; startRound(); }
+
+    function initOrUpdateChart() {
+        const sortedData = [...ppfData].sort((a, b) => a.x - b.x);
+        
+        // Find max values to set dynamic scaling
+        const maxX = Math.max(...sortedData.map(d => d.x), 15);
+        const maxY = Math.max(...sortedData.map(d => d.y), 15);
+
+        if (!chartObj) {
+            const ctx = document.getElementById('ppfChart').getContext('2d');
+            chartObj = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Frontier Line',
+                        data: sortedData,
+                        showLine: true,
+                        borderColor: '#2ecc71',
+                        backgroundColor: '#27ae60',
+                        borderWidth: 4,
+                        tension: 0.35,
+                        pointRadius: 8,
+                        pointHoverRadius: 10
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    layout: { padding: 20 },
+                    scales: {
+                        x: { 
+                            title: { display: true, text: 'SMILES (🙂)', font: {size: 14, weight: 'bold'} },
+                            min: 0,
+                            suggestedMax: maxX + 2,
+                            grid: { color: '#eee' }
+                        },
+                        y: { 
+                            title: { display: true, text: 'LINKS (🔗)', font: {size: 14, weight: 'bold'} },
+                            min: 0,
+                            suggestedMax: maxY + 2,
+                            grid: { color: '#eee' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: true }
+                    }
+                }
+            });
+        } else {
+            chartObj.data.datasets[0].data = sortedData;
+            chartObj.options.scales.x.suggestedMax = maxX + 2;
+            chartObj.options.scales.y.suggestedMax = maxY + 2;
+            chartObj.update();
+        }
+    }
 </script>
 </body>
 </html>
